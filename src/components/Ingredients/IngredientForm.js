@@ -3,14 +3,18 @@ import React, {useState} from 'react'; //useState controls state in functional c
 import Card from '../UI/Card';
 import './IngredientForm.css';
 
-const IngredientForm = React.memo(props => {
-  //can be anything, not just an object like in c;ass based state.
-  const inputState = useState({title: '', amount: ''}); //always returns array with two elements, first element is current state snapshot, second is a function that alows us to update the current state
-
+const IngredientForm = React.memo(props => { //if props are the same don't rerender the component
+  //can be anything, not just an object like in class based state.
+  /*const [inputState, setInputState] = useState({title: '', amount: ''}); //always returns array with two elements, first element is current state snapshot, second is a function that alows us to update the current state, 
+  array destructuring for smoother code (429), use objects and arrays if you really have data that changes together or when you need to change multiple things together*/
+  const [enteredTitle, setEnteredTitle] = useState('');
+  const [enteredAmount, setEnteredAmount] = useState('');
 
   const submitHandler = event => {
+    /*can't use React Hooks inside other functions (has to be in root of functional component, not function that's inside of FC) e.g useState(),
+     or hooks e.g. if(true){useState() } */
     event.preventDefault();
-    // ...
+    props.onAddIngredient({title: enteredTitle, amount: enteredAmount});
   };
 
   return (
@@ -21,14 +25,18 @@ const IngredientForm = React.memo(props => {
           <div className="form-control">
             <label htmlFor="title">Name</label>
             <input type="text" id="title" 
-              value={inputState[0].title}      //to be sure that we are using latest state ->prevInputState (can name it whatever)
+              /* value={inputState.title}      //to be sure that we are using latest state ->prevInputState (can name it whatever)
               onChange={event => {
                 const newTitle = event.target.value;
-                inputState[1]( (prevInputState)=> (
-                {title: newTitle, amount: previnputState[0].amount} 
-                )) /*428*/
+                setInputState( (prevInputState)=> (
+                {title: newTitle, amount: prevInputState.amount} 
+                )) 428
+                } */
+                value={enteredTitle}      
+                onChange={event => {
+                  setEnteredTitle(event.target.value);
+                  }
                 }
-              }
 
             />
           </div>
@@ -36,13 +44,15 @@ const IngredientForm = React.memo(props => {
           <div className="form-control">
             <label htmlFor="amount">Amount</label>
             <input type="number" id="amount" 
-              value={inputState[0].amount}
+              /* value={inputState.amount}
               onChange={event => {
                 const newAmount = event.target.value; //bcz react event is not same as DOM event
-                inputState[1]( (pInState)=>(
-                {amount: newAmount, title: pInState[0].title}))
+                setInputState( (prevInputState)=>(
+                {amount: newAmount, title: prevInputState.title}))
                 }
-              }
+              } */
+              value={enteredAmount}
+              onChange={event => setEnteredAmount(event.target.value)}
             />
           </div>
 

@@ -1,64 +1,71 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useReducer,useEffect, useCallback} from 'react';
 
 import IngredientForm from './IngredientForm';
 import Search from './Search';
 import IngList from './IngredientList';
-function Ingredients() {
+import ErrorModal from '../UI/ErrorModal';
 
-  const [stateIngredients, setIngredients] = useState([]);
-  
-  /* when compoenent mounts, we are fetching ingredients in Search component so there is no need for this.
-
-  //execeute side ffects, has to have a function
-  useEffect(()=>{//executed right AFTER component is rendered (EVERY render cycle)
-    fetch("https://react-hooks-ea611.firebaseio.com/ingredients.json").then(response => response.json() )
-      .then(responseData => {//rD is an object
-        const loadedIngredients = [];
-        for(const key in responseData){
-          loadedIngredients.push({
-          id: key,
-          title: responseData[key].title,
-          amount: responseData[key].amount
-        })
-    }
-    setIngredients(loadedIngredients);
-  }) // 434 !!!
-  }, []); //with empty array it functions like componentDidMount, runs just once (after the first render). Without second argument, it acts like componentDidUpdate (after every component update (re-render) ) */
-  
- /*  fetch("https://react-hooks-ea611.firebaseio.com/ingredients.json").then(response => response.json() ).then(responseData => {
-    const loadedIngredients = [];
-    for(const key in responseData){
-      loadedIngredients.push({
-        id: key,
-        title: responseData[key].title,
-        amount: responseData[key].amount
-      })
-    }
-    //setIngredients(loadedIngredients); -> infinite loop, updating state re-renders Ingredients
-  }) */
+                //state (stateIngredients) , action
+const ingsReducer = (currentIngs, action) => {
+// all updates in one place, 
+  switch (action.type) {
+    case 'SET':
+      return action.ingredients;
+    case 'ADD':
+      return [...currentIngs, action.ingredient];
+    case 'DELETE':
+      return currentIngs.filter(ing => ing.id!== action.id)
+      default:
+        throw new Error ('should not get here!')
+  }
+}
+//can out reducer inside of the function if you want to (perhaps to use props)
+const httpReducer = (currentHttp, action) => {
+  switch (action.type) {
+    case 'SEND':
+      return {loading: true, error: null};
+    case 'RESPONSE':
+      return {...currentHttp, loading: false}; //arguments after ... are overriding
+    case 'ERROR':
+      return {loading: false, error: action.errorMessage};
+    case 'CLEAR':
+      return {...currentHttp, error: null};  
+    default:
+      throw new Error ('Should not be reached');
     
+  }
+}
+
+function Ingredients() {
+  
+  const [stateIngredients, dispatch] = useReducer(ingsReducer, []);
+  //const [stateIngredients, setIngredients] = useState([]);
+  const [httpState, httpDispatch] = useReducer(httpReducer, {loading: false, error: null});
+  //const [isLoading, setLoading] = useState(false);
+  //const [error, setError] = useState();
+ 
     useEffect(()=> { //runs after every re-render
       console.log('RENDERING INGREDIENTS', stateIngredients)
     }, [stateIngredients]) //effect only activates when values in the list (2nd argument) change
 
     const addIngredient = ingredient => {
+      httpDispatch({type: 'SEND'});
     //fetch is browser function
     fetch("https://react-hooks-ea611.firebaseio.com/ingredients.json", {
       method: 'POST',
       body: JSON.stringify(ingredient), //converts js object or array into JSON
       headers: {'Content-Type': 'application/json'}
-    }).then(response => { //response has automatic generated ID
+      }).then(response => { //response has automatic generated ID
+        httpDispatch({type: 'RESPONSE'});
         return response.json(); // converts JSON to normal JS code
-        }).then( responseData => 
-              {setIngredients(prevIngredients => 
-              [...prevIngredients, //each ingredient is an object, they are inside of an array
-              {id: responseData.name, ...ingredient}, //expect to receive ingredient as an object
-              ] 
-      );
-    })
-    
-
-  };
+        
+        }).then( responseData => {
+            dispatch({
+             type: 'ADD',
+             ingredient: {id: responseData.name, ...ingredient}
+          })
+      })
+    };
 
   /* function removeIng(array,id){ //how I tried
     for(let i=0; i<array.length; i++){
@@ -67,22 +74,38 @@ function Ingredients() {
     }
   }; */
   const removeIng = ingID => {
-
+    
+    httpDispatch({type: 'SEND'});
     fetch(`https://react-hooks-ea611.firebaseio.com/ingredients/${ingID}.json`, {
       method: 'DELETE',
     }).then(response => {
-      setIngredients(prevIngredients => prevIngredients.filter((ingredient) => ingredient.id !== ingID));
+      httpDispatch({type: 'RESPONSE'});
+
+      dispatch ({type: 'DELETE', id: ingID})
+
+    }).catch(error => {
+     // setError(error.message);// every error has a message property
+        httpDispatch({type: 'ERROR', errorMessage: 'Something went wrong'});
     })
 
   }
                       //437 2:30
   const filteredIngs = useCallback(filteredIngs => {
-    setIngredients(filteredIngs);
-  }, [/* same as putting setIngredients */])
+    //setIngredients(filteredIngs);
+    dispatch({type: 'SET', ingredients: filteredIngs});
+  }, [/* same as putting setIngredients here */])
 
+  const clearError =() => httpDispatch({type: 'CLEAR'});;/*remember, couldn't use setError() directly */
+
+  
   return (
     <div className="App">
-      <IngredientForm onAddIngredient={addIngredient}/>
+      {httpState.error && <ErrorModal onClose={clearError}>{httpState.error}</ErrorModal>}
+      <IngredientForm 
+        onAddIngredient={addIngredient}
+        loading={httpState.loading}
+
+      />
 
       <section>
         <Search onLoadIngs={filteredIngs} />

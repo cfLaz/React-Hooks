@@ -2,6 +2,7 @@ import React, {useState} from 'react'; //useState controls state in functional c
 
 import Card from '../UI/Card';
 import './IngredientForm.css';
+import LoadingIndicator from '../UI/LoadingIndicator';
 
 const IngredientForm = React.memo(props => { //if props are the same don't rerender the component
   //can be anything, not just an object like in class based state.
@@ -58,6 +59,7 @@ const IngredientForm = React.memo(props => { //if props are the same don't reren
 
           <div className="ingredient-form__actions">
             <button type="submit">Add Ingredient</button>
+            {props.loading && <LoadingIndicator/>}
           </div>
 
         </form>

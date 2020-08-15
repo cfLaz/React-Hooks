@@ -6,10 +6,11 @@ import {AuthContext} from './context/auth-context';
 
 const App = props => {
   const authContext = useContext(AuthContext);
-
   let content = <Auth/>;
-  if(authContext.isAuth) content = <Ingredients/>
-  return content;
+
+  if(authContext.isAuth) {content = <Ingredients />;}
+  
+  return content; //<AuthContext.Consumer> content </AuthContext.Consumer> (in class based component)
 };
 
 export default App;

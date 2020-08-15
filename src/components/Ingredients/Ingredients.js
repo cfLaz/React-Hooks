@@ -1,4 +1,4 @@
-import React, {useReducer,useEffect, useCallback} from 'react';
+import React, {useReducer,useEffect, useCallback, useMemo} from 'react';
 
 import IngredientForm from './IngredientForm';
 import Search from './Search';
@@ -44,12 +44,12 @@ function Ingredients() {
   //const [isLoading, setLoading] = useState(false);
   //const [error, setError] = useState();
  
-    useEffect(()=> { //runs after every re-render
+  useEffect(()=> { //runs after every re-render
       console.log('RENDERING INGREDIENTS', stateIngredients)
     }, [stateIngredients]) //effect only activates when values in the list (2nd argument) change
-
-    const addIngredient = ingredient => {
-      httpDispatch({type: 'SEND'});
+                      //446 3:00
+  const addIngredient = useCallback(ingredient => {
+      httpDispatch({type: 'SEND'})
     //fetch is browser function
     fetch("https://react-hooks-ea611.firebaseio.com/ingredients.json", {
       method: 'POST',
@@ -65,7 +65,7 @@ function Ingredients() {
              ingredient: {id: responseData.name, ...ingredient}
           })
       })
-    };
+    },[]);
 
   /* function removeIng(array,id){ //how I tried
     for(let i=0; i<array.length; i++){
@@ -73,9 +73,9 @@ function Ingredients() {
         setIngredients(prevIngredients => [...prevIngredients].splice(i,1))
     }
   }; */
-  const removeIng = ingID => {
+  const removeIng = useCallback(ingID => {
     
-    httpDispatch({type: 'SEND'});
+    httpDispatch({type: 'SEND'}); //doesn't need to be specified in second argument of useCallback function
     fetch(`https://react-hooks-ea611.firebaseio.com/ingredients/${ingID}.json`, {
       method: 'DELETE',
     }).then(response => {
@@ -87,20 +87,25 @@ function Ingredients() {
      // setError(error.message);// every error has a message property
         httpDispatch({type: 'ERROR', errorMessage: 'Something went wrong'});
     })
+  }, [])
 
-  }
                       //437 2:30
   const filteredIngs = useCallback(filteredIngs => {
     //setIngredients(filteredIngs);
     dispatch({type: 'SET', ingredients: filteredIngs});
   }, [/* same as putting setIngredients here */])
 
-  const clearError =() => httpDispatch({type: 'CLEAR'});;/*remember, couldn't use setError() directly */
+  const clearError =useCallback(() => httpDispatch({type: 'CLEAR'}), []);/*remember, couldn't use setError() directly */
 
+  const ingList = useMemo(()=>{
+    return(<IngList ingredients={stateIngredients} onRemoveItem={removeIng}/>)
+  }, [stateIngredients, removeIng]);//removeIng shouldn't change because it's in useCallback
   
   return (
     <div className="App">
-      {httpState.error && <ErrorModal onClose={clearError}>{httpState.error}</ErrorModal>}
+      {httpState.error && 
+      (<ErrorModal onClose={clearError}>{httpState.error}</ErrorModal>)}
+
       <IngredientForm 
         onAddIngredient={addIngredient}
         loading={httpState.loading}
@@ -109,7 +114,7 @@ function Ingredients() {
 
       <section>
         <Search onLoadIngs={filteredIngs} />
-        <IngList ingredients={stateIngredients} onRemoveItem={removeIng}/>
+        {ingList}
       </section>
     </div>
   );

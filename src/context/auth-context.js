@@ -16,10 +16,12 @@ const AuthContextProvider = props => {
   };
 
   return(
-    <AuthContext.Provider value={{login: loginHandler, isAuth: isAuthenticated}}>
+    <AuthContext.Provider 
+      value={{login: loginHandler, isAuth: isAuthenticated}}
+    >
       {props.chidren}
     </AuthContext.Provider>
-  )
-}
+  );
+};
 
 export default AuthContextProvider;

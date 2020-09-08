@@ -4,8 +4,9 @@ import IngredientForm from './IngredientForm';
 import Search from './Search';
 import IngList from './IngredientList';
 import ErrorModal from '../UI/ErrorModal';
-
-                //state (stateIngredients) , action
+import useHttp from '../../hooks/http'; //has to begin with "use" here as well
+                
+      //state (stateIngredients) , action
 const ingsReducer = (currentIngs, action) => {
 // all updates in one place, 
   switch (action.type) {
@@ -15,79 +16,54 @@ const ingsReducer = (currentIngs, action) => {
       return [...currentIngs, action.ingredient];
     case 'DELETE':
       return currentIngs.filter(ing => ing.id!== action.id)
-      default:
+    default:
         throw new Error ('should not get here!')
   }
 }
-//can out reducer inside of the function if you want to (perhaps to use props)
-const httpReducer = (currentHttp, action) => {
-  switch (action.type) {
-    case 'SEND':
-      return {loading: true, error: null};
-    case 'RESPONSE':
-      return {...currentHttp, loading: false}; //arguments after ... are overriding
-    case 'ERROR':
-      return {loading: false, error: action.errorMessage};
-    case 'CLEAR':
-      return {...currentHttp, error: null};  
-    default:
-      throw new Error ('Should not be reached');
-    
-  }
-}
+//can put reducer inside of the function if you want to (perhaps to use props)
 
 function Ingredients() {
-  
+
   const [stateIngredients, dispatch] = useReducer(ingsReducer, []);
-  //const [stateIngredients, setIngredients] = useState([]);
-  const [httpState, httpDispatch] = useReducer(httpReducer, {loading: false, error: null});
   //const [isLoading, setLoading] = useState(false);
   //const [error, setError] = useState();
- 
+  const {isLoading, error, data, sendRequest, reqExtra, reqIdentifier, clear}= useHttp(); //doesn't send the request, just sets up the state and the function inside it... will re-run with every render
+
+  //handling requests like this fully embraces concept of React Hooks
   useEffect(()=> { //runs after every re-render
-      console.log('RENDERING INGREDIENTS', stateIngredients)
-    }, [stateIngredients]) //effect only activates when values in the list (2nd argument) change
+    //is Loading - to make sure WE ARE DONE with Loading and can move on, not before that, same for error.
+    if (!isLoading && !error && reqIdentifier === 'REMOVE_ING'){
+      dispatch({type: 'DELETE', id: reqExtra}) 
+    }
+    else if (!isLoading && !error && reqIdentifier === 'ADD_ING') {
+      dispatch({ 
+        type: 'ADD',     
+        ingredient: {id: data.name, ...reqExtra}
+      })
+    }
+  }, [data, reqExtra, reqIdentifier, isLoading, error]) //effect only activates when values in the list (2nd argument) change
                       //446 3:00
   const addIngredient = useCallback(ingredient => {
-      httpDispatch({type: 'SEND'})
-    //fetch is browser function
-    fetch("https://react-hooks-ea611.firebaseio.com/ingredients.json", {
-      method: 'POST',
-      body: JSON.stringify(ingredient), //converts js object or array into JSON
-      headers: {'Content-Type': 'application/json'}
-      }).then(response => { //response has automatic generated ID
-        httpDispatch({type: 'RESPONSE'});
-        return response.json(); // converts JSON to normal JS code
-        
-        }).then( responseData => {
-            dispatch({
-             type: 'ADD',
-             ingredient: {id: responseData.name, ...ingredient}
-          })
-      })
-    },[]);
 
-  /* function removeIng(array,id){ //how I tried
-    for(let i=0; i<array.length; i++){
-      if(array[i].id === id)
-        setIngredients(prevIngredients => [...prevIngredients].splice(i,1))
-    }
-  }; */
+    sendRequest(
+      'https://react-hooks-ea611.firebaseio.com/ingredients/.json', 
+      'POST', 
+      JSON.stringify(ingredient), 
+      ingredient,
+      'ADD_ING')
+      
+    },[sendRequest]); 
+
+
   const removeIng = useCallback(ingID => {
-    
-    httpDispatch({type: 'SEND'}); //doesn't need to be specified in second argument of useCallback function
-    fetch(`https://react-hooks-ea611.firebaseio.com/ingredients/${ingID}.json`, {
-      method: 'DELETE',
-    }).then(response => {
-      httpDispatch({type: 'RESPONSE'});
-
-      dispatch ({type: 'DELETE', id: ingID})
-
-    }).catch(error => {
-     // setError(error.message);// every error has a message property
-        httpDispatch({type: 'ERROR', errorMessage: 'Something went wrong'});
-    })
-  }, [])
+    //Ingredient component is rebuilt when sendRequest is done
+    sendRequest(`https://react-hooks-ea611.firebaseio.com/ingredients/${ingID}.json`, 
+      'DELETE',
+      null,
+      ingID,
+      'REMOVE_ING'
+    );
+  }, [sendRequest])
 
                       //437 2:30
   const filteredIngs = useCallback(filteredIngs => {
@@ -95,20 +71,21 @@ function Ingredients() {
     dispatch({type: 'SET', ingredients: filteredIngs});
   }, [/* same as putting setIngredients here */])
 
-  const clearError =useCallback(() => httpDispatch({type: 'CLEAR'}), []);/*remember, couldn't use setError() directly */
-
-  const ingList = useMemo(()=>{
-    return(<IngList ingredients={stateIngredients} onRemoveItem={removeIng}/>)
+  const ingList = useMemo(()=>{ //the returned value is saved (so it's not changed in future if it's the same)... not feasible in small apps
+    return(
+      <IngList 
+        ingredients={stateIngredients} 
+        onRemoveItem={removeIng} 
+      />)
   }, [stateIngredients, removeIng]);//removeIng shouldn't change because it's in useCallback
   
   return (
     <div className="App">
-      {httpState.error && 
-      (<ErrorModal onClose={clearError}>{httpState.error}</ErrorModal>)}
+      {error && <ErrorModal onClose={clear}> {error} </ErrorModal>}
 
       <IngredientForm 
         onAddIngredient={addIngredient}
-        loading={httpState.loading}
+        loading={isLoading}
 
       />
 

@@ -37,7 +37,7 @@ const IngredientForm = React.memo(props => {
             <input type="number" id="amount" 
               /* value={inputState.amount}
               onChange={event => {
-                const newAmount = event.target.value; //bcz react event is not same as DOM event
+                const newAmount = event.target.value; //bcz react event is not same as DOM event 428
                 setInputState( (prevInputState)=>(
                 {amount: newAmount, title: prevInputState.title}))
                 }
